@@ -1,19 +1,61 @@
 // prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite" // Menggunakan SQLite agar mudah (tanpa instal database berat)
+  provider = "sqlite"
   url      = "file:./dev.db"
 }
 
-model Participant {
+// MODEL BARU: Autentikasi Admin
+model Admin {
   id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String   // Akan disimpan dalam bentuk hash (bcrypt)
   name      String
-  phone     String
-  domicile  String
-  attendees String
-  status    String   @default("PENDING") // SENT, FAILED, PENDING
+  role      String   @default("ADMIN") // Bisa dikembangkan: SUPERADMIN, STAFF
   createdAt DateTime @default(now())
+}
+
+model Event {
+  id          Int           @id @default(autoincrement())
+  title       String        //
+  description String?
+  location    String        //
+  date        DateTime      //
+
+  // Media Assets
+  flyerUrl    String?       // URL foto portrait
+  bannerUrl   String?       // URL foto landscape
+
+  // Konfigurasi Form Custom (JSON String)
+  // Contoh: [{"id":"size", "label":"Ukuran Baju", "type":"select", "options":["S","M","L"]}]
+  formSchema  String?
+
+  quota       Int           @default(100)
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  participants Participant[]
+}
+
+model Participant {
+  id          Int       @id @default(autoincrement())
+  name        String    //
+  whatsapp    String    //
+
+  // Jawaban form custom (JSON String)
+  // Contoh: {"size": "XL", "food_pref": "Vegetarian"}
+  customData  String?
+
+  waStatus    String    @default("PENDING") //
+  isAttended  Boolean   @default(false)    // Untuk fitur scan QR
+  attendedAt  DateTime?
+  ticketCode  String    @unique @default(uuid())
+  createdAt   DateTime  @default(now())
+
+  eventId     Int
+  event       Event     @relation(fields: [eventId], references: [id])
 }
