@@ -7,16 +7,16 @@ const prisma = new PrismaClient();
 // Konfigurasi penyimpanan lokal
 const upload = multer({ dest: "uploads/" });
 
-// Ambil semua event
+// 1. AMBIL SEMUA EVENT (Untuk List Card di Home Page)
 router.get("/", async (req, res) => {
   try {
     const events = await prisma.event.findMany({
       include: {
         _count: {
-          select: { participants: true }, // Menghitung jumlah pendaftar
+          select: { participants: true }, // Menghitung jumlah pendaftar per event
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { date: "asc" }, // Urutkan berdasarkan tanggal terdekat
     });
     res.json(events);
   } catch (error) {
@@ -24,7 +24,30 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Handler POST harus sesuai dengan URL /api/events
+// 2. AMBIL DETAIL SATU EVENT (Untuk Landing Page Pendaftaran)
+router.get("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const event = await prisma.event.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        _count: {
+          select: { participants: true }, // Untuk cek sisa kuota di landing page
+        },
+      },
+    });
+
+    if (!event) {
+      return res.status(404).json({ message: "Event tidak ditemukan" });
+    }
+
+    res.json(event);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 3. TAMBAH EVENT BARU
 router.post(
   "/",
   upload.fields([
@@ -33,8 +56,15 @@ router.post(
   ]),
   async (req, res) => {
     try {
-      const { title, location, date, description, quota, formSchema } =
-        req.body;
+      const {
+        title,
+        location,
+        date,
+        description,
+        quota,
+        formSchema,
+        whatsappTemplate,
+      } = req.body;
 
       const newEvent = await prisma.event.create({
         data: {
@@ -43,7 +73,8 @@ router.post(
           date: new Date(date),
           description,
           quota: parseInt(quota),
-          formSchema, // Data JSON dari form builder
+          formSchema,
+          whatsappTemplate, // Template pesan custom
           flyerUrl: req.files["flyer"]
             ? `/uploads/${req.files["flyer"][0].filename}`
             : null,
@@ -59,25 +90,7 @@ router.post(
   },
 );
 
-// Ambil detail satu event berdasarkan ID
-router.get("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const event = await prisma.event.findUnique({
-      where: { id: parseInt(id) },
-    });
-
-    if (!event) {
-      return res.status(404).json({ message: "Event tidak ditemukan" });
-    }
-
-    res.json(event);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Update event (Mendukung upload file baru)
+// 4. UPDATE EVENT
 router.put(
   "/:id",
   upload.fields([
@@ -93,11 +106,11 @@ router.put(
         description,
         quota,
         formSchema,
+        whatsappTemplate,
         isActive,
       } = req.body;
       const id = parseInt(req.params.id);
 
-      // Siapkan data update
       const updateData = {
         title,
         location,
@@ -105,10 +118,10 @@ router.put(
         description,
         quota: parseInt(quota),
         formSchema,
+        whatsappTemplate,
         isActive: isActive === "true",
       };
 
-      // Jika ada file baru yang diunggah, update URL-nya
       if (req.files["flyer"])
         updateData.flyerUrl = `/uploads/${req.files["flyer"][0].filename}`;
       if (req.files["banner"])
@@ -125,18 +138,15 @@ router.put(
   },
 );
 
+// 5. HAPUS EVENT
 router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Contoh Logika (Sesuaikan dengan Database Anda, misal: Prisma, Sequelize, atau Query Mentah)
-    const deletedEvent = await prisma.event.deleteMany({
+    // Gunakan delete (bukan deleteMany) agar melempar error jika ID tidak ada
+    await prisma.event.delete({
       where: { id: parseInt(id) },
     });
-
-    if (!deletedEvent) {
-      return res.status(404).json({ message: "Event tidak ditemukan" });
-    }
 
     res.status(200).json({ message: "Event berhasil dihapus" });
   } catch (error) {
