@@ -1,0 +1,19 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite" // Menggunakan SQLite agar mudah (tanpa instal database berat)
+  url      = "file:./dev.db"
+}
+
+model Participant {
+  id        Int      @id @default(autoincrement())
+  name      String
+  phone     String
+  domicile  String
+  attendees String
+  status    String   @default("PENDING") // SENT, FAILED, PENDING
+  createdAt DateTime @default(now())
+}
