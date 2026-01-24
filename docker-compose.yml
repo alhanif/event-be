@@ -1,0 +1,24 @@
+services:
+  backend:
+    build: .
+    container_name: sela-backend
+    ports:
+      - "5500:5500"
+    volumes:
+      - ./prisma/dev.db:/app/prisma/dev.db
+      - ./.wwebjs_auth:/app/.wwebjs_auth
+      - ./.wwebjs_cache:/app/.wwebjs_cache
+      - ./uploads:/app/uploads
+    environment:
+      - DATABASE_URL="file:./dev.db"
+      - JWT_SECRET="rahasia_admin_sela"
+      - TZ="Asia/Jakarta"
+    restart: always
+
+  # Jika Anda ingin sekalian menjalankan frontend
+  # frontend:
+  #   build: ./frontend
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - NEXT_PUBLIC_API_URL=http://localhost:5500
